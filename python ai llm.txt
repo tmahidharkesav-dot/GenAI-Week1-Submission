@@ -1,0 +1,70 @@
+import streamlit as st
+import google.generativeai as genai
+
+# Page configuration
+st.set_page_config(page_title="AI Writing Assistant", page_icon="??")
+st.title("?? AI Writing Assistant")
+
+# Sidebar - Configuration
+st.sidebar.header("Configuration")
+api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
+
+use_case = st.sidebar.selectbox(
+    "Choose Task Template",
+    ["Blog Writing", "Email Drafting", "Code Explanation", "Social Media Posts"]
+)
+
+temperature = st.sidebar.slider(
+    "Temperature (Creativity)", 
+    min_value=0.0, 
+    max_value=1.0, 
+    value=0.7, 
+    step=0.1
+)
+
+# Output formatting options
+output_format = st.sidebar.radio(
+    "Output Format", 
+    ["Paragraph / Narrative", "Bulleted List", "Markdown Structured"]
+)
+
+# User input area
+user_prompt = st.text_area("Enter your topic or request:", height=150)
+
+# Build Prompt Template
+def build_prompt(task, content, fmt):
+    templates = {
+        "Blog Writing": f"Write a comprehensive and engaging blog post about: {content}.",
+        "Email Drafting": f"Draft a professional email regarding: {content}.",
+        "Code Explanation": f"Explain the following code snippet step-by-step in detail: {content}.",
+        "Social Media Posts": f"Create 3 catchy social media posts (with hashtags) for: {content}."
+    }
+    
+    base_prompt = templates.get(task, content)
+    format_instruction = f"\n\nFormat the response using: {fmt}."
+    return base_prompt + format_instruction
+
+# Generation logic
+if st.button("Generate Content"):
+    if not api_key:
+        st.error("Please provide a valid Gemini API Key in the sidebar.")
+    elif not user_prompt.strip():
+        st.warning("Please enter some input text.")
+    else:
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            
+            prompt = build_prompt(use_case, user_prompt, output_format)
+            
+            with st.spinner("Generating output..."):
+                response = model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(temperature=temperature)
+                )
+                
+            st.success("Generated Output:")
+            st.markdown(response.text)
+            
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
